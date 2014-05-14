@@ -82,11 +82,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="algos.cpp" />
     <ClCompile Include="image_device.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="settings.cpp" />
+    <ClCompile Include="utility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="image_device.h" />
+    <ClInclude Include="settings.h" />
+    <ClInclude Include="utility.h" />
+    <ClInclude Include="algos.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,90 +1,104 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
 #include "image_device.h"
+#include "algos.h"
+#include "utility.h"
+#include "settings.h"
+
 #include <iostream>
 
 using namespace std;
 using namespace cv;
 
-Point2d calculate_offset(Mat one, Mat two) {
+typedef Point2d (*Image_offset_calculation)(Mat img1, Mat img2);
 
-	cvtColor(one, one, CV_BGR2GRAY);
-	cvtColor(two, two, CV_BGR2GRAY);
-	one.convertTo(one, CV_64FC1);
-	two.convertTo(two, CV_64FC1);
-	return phaseCorrelate(one, two);
+int main(int argc, int** argv) {
 
-}
+	// ---- SETTINGS ----
 
-int main() {
+	SteadySettings settings;
+	settings.load();
+	if(!settings.verify()) {
+		cerr << "[ERROR] Work with the current configuration is not possible" << endl;
+		exit(EXIT_FAILURE);
+	}
+	settings.print();
 
-	//Настраиваем устройство
-	char* path_to_image = "C:\\Short\\Projects\\OFBench\\Media\\TestExampleTwo.jpg";
-	Size frame_size(600, 600);
-	ImageDevice imdev(path_to_image, frame_size);
-	Mat current_frame; //Текущий кадр
-	Mat reference_frame; //Опорный кадр для штатива
-	Mat processed_frame(frame_size, CV_8UC3);
+	// ---- DEVICE and VIDEO ----
 
-	//Базовые настройки
-	int offset_threshold = 10; //Порог смещений для штатива
+	VideoCapture vcap(0);
 
-	//Впомогательные переменные
-	bool use_last_frame = false; //Флаг использования предыдущего кадра для штатива
-	Point2d offset(0, 0); //Смещения между 2 изображениями
-	Rect cutter_frame; //Прямоугольник для ROI в смещенных изображениях
-	namedWindow("Ready"); //Окошки
-	namedWindow("Steady");
-	namedWindow("Ref");
+	if(settings.dev_type == SteadySettings::DEV_CAMERA) {
+		vcap.open(settings.device_id);
+	} else {
+		vcap.open(settings.path_to_video.c_str());
+	}
+
+	if(!vcap.isOpened()) {
+		cerr << "[ERROR] Unable to open source video" << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	Size vsize;
+	vsize.height = vcap.get(CV_CAP_PROP_FRAME_HEIGHT);
+	vsize.width = vcap.get(CV_CAP_PROP_FRAME_WIDTH);
+
+	// ---- ALGORITHMS ----
+
+	Image_offset_calculation calc_offset = &calculate_offset_phase;
+
+	// ---- VARIABLES ----
+
+	namedWindow("Original");
+
+#ifdef _DEBUG
+	namedWindow("Graph");
+#endif // _DEBUG
+
+	Mat current_frame;
+	Mat base_frame;
+	Mat graph_frame;
+	graph_frame = Mat::zeros(vsize, CV_8UC1);
+	Point2d offset;
+	bool reset_base_frame = true;
+
+	// ---- MAIN CYCLE ----
 
 	while(true) {
 
-		imdev >> current_frame; //Получаем изображение с устройства
-		imshow("Ready", current_frame); //Выводим изображние в первозданном виде
+		// 1 - Get frame
 
-		//БЛОК 1. Штатив
-		//Если по какой-то причине флаг сброшен, то используем новое референсное изображение
-		//Причины сброса:
-		//	Смещение изображение больше заданного порога
-		//	Слишком большое смещение
-		if(!use_last_frame) {
-			reference_frame = current_frame;
-			use_last_frame = true;
+		vcap >> current_frame;
+#ifdef _DEBUG
+		flip(current_frame, current_frame, 1);
+#endif
+
+		// 2 - Setting base frame
+
+		if(reset_base_frame) {
+			base_frame = current_frame.clone();
+			reset_base_frame = false;
 		}
 
-		offset = calculate_offset(current_frame, reference_frame); //Подсчитываем смещение между изображениями
-		//Если смещение больше допустимой нормы...
-		if(abs(offset.x) > offset_threshold || abs(offset.y) > offset_threshold) {
+		// 3 - Calculating offset
 
-			//...значит штатив сдвинули с места и следующий референсный кадр изменится
-			use_last_frame = false;
+		offset = calc_offset(current_frame, base_frame);
+#ifdef _DEBUG
+		circle(graph_frame, Point2d(offset.x + vsize.width / 2, offset.y + vsize.height / 2), 3, Scalar(255, 255, 255));
+#endif		
+		// - Putting image to screen
 
-		} else {
+		imshow("Original", current_frame);
+#ifdef _DEBUG
+		imshow("Graph", graph_frame);
+#endif
+		char mode = (char)waitKey(50);
+		if(mode == 'e' || mode == 'у') break;
 
-			//В противном случае мы двигаем исходное изображение, предотвращая смещение и voila!
-			//Ситуация, когда камера сдвинулась влево вниз
-			if(offset.x >= 0 && offset.y >= 0) {
-				//Проверяем, не сместилось ли изображение слишком далеко
-				if(offset.x > current_frame.cols && offset.y > current_frame.rows)
-					use_last_frame = false;
-				else {
-					processed_frame.adjustROI(offset.y, current_frame.rows, offset.x, current_frame.cols) = current_frame(Rect(0, 0, current_frame.cols-offset.x, current_frame.rows-offset.y));
-				}
-				
-			}
+	} // while
 
-		}
-		
-		imshow("Steady", processed_frame);
-		imshow("Ref", reference_frame);
-
-		char c = (char)waitKey(250);
-
-		if(c == 'e' || c == 'у') break; //Если нажата e, то выходим
-		if(c == 'q' || c == 'й') {--offset_threshold; cout << "Threshold " << offset_threshold << endl;}
-		if(c == 'w' || c == 'ц') {++offset_threshold; cout << "Threshold " << offset_threshold << endl;}
-
-	}
+	destroyAllWindows();
 
 	return EXIT_SUCCESS;
 

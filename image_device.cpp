@@ -54,14 +54,14 @@ void ImageDevice::move_horizontal_right(unsigned range) {
 		position = 0;
 
 	window = image(cv::Rect(window_coord.x+position, window_coord.y, window_size.width, window_size.height));
-	++position;
+	position+=10;
 
 };
 
 ImageDevice& ImageDevice::operator >>(cv::Mat& outer_image) {
 
 	outer_image = window;
-	move_horizontal_right(300);
+	move_horizontal_right(800);
 	return *this;
 
 }
