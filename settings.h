@@ -8,12 +8,11 @@ struct SteadySettings {
 
 	// Типы
 	enum device_type {DEV_FILE, DEV_CAMERA};
+	enum output_type {OUT_GUI, OUT_FILE};
 
 	// Методы
 	SteadySettings();
 	void load();
-	void save();
-	void show();
 	void print();
 	bool verify();
 
@@ -25,6 +24,8 @@ struct SteadySettings {
 	int camera_lowpass_filter_amount;
 	int frame_skipping_threshold;
 	device_type dev_type;
+	output_type out_type;
 	std::string path_to_video;
+	std::string path_to_out_video;
 
 };
