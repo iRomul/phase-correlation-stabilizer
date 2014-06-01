@@ -1,7 +1,33 @@
 #pragma once
-#include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/imgproc/imgproc.hpp>
+
+#include "settings.h"
 
 using namespace cv;
+
+////		Класс для работы с алгоритмами		////
+
+// Статический стабилизатор, основанный на фазовой корреляции
+class Stabilizer {
+
+	Mat base_frame; // Опорный кадр
+	Point2f prev_offset; // Предыдущие координаты смещения
+	Point2f offset; // Текущие координаты смещения
+	SteadySettings* settings; // Настройки программы
+	bool state; // Включено/выключено
+	float inner_scale; // Масштабирование внутри фазовой корреляции
+	float frame_scale; // Масштабирование результирующего кадра
+	bool reset_base_frame; // Флаг сброса базового кадра
+
+public:
+	Stabilizer();
+	void set_settings(SteadySettings*);
+	void stabilize(Mat& A);
+	void shift_images();
+	void calcutae_offset(Mat& A);
+	void operator()(Mat& A);
+
+};
 
 ////		Алгоритмы вычисления смещений		////
 

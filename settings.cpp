@@ -9,7 +9,7 @@ SteadySettings::SteadySettings() :
 #ifdef _DEBUG
 	path_to_file("C:\\Short\\cfg.ini"),
 #else
-	path_to_file("cfg.ini"),
+	path_to_file("C:\\cfg.ini"),
 #endif
 	camera_offset_threshold(500),
 	camera_lowpass_filter_amount(10),
